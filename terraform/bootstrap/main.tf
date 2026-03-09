@@ -126,6 +126,8 @@ resource "aws_iam_user_policy" "github_actions_iam" {
           "iam:CreatePolicy",
           "iam:DeletePolicy",
           "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
           "iam:CreatePolicyVersion",
           "iam:DeletePolicyVersion",
           "iam:CreateUser",
@@ -135,7 +137,8 @@ resource "aws_iam_user_policy" "github_actions_iam" {
           "iam:AttachUserPolicy",
           "iam:DetachUserPolicy",
           "iam:PutUserPolicy",
-          "iam:DeleteUserPolicy"
+          "iam:DeleteUserPolicy",
+          "iam:TagPolicy"
         ]
         Resource = "*"
       }

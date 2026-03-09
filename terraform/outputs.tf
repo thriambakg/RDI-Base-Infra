@@ -43,6 +43,21 @@ output "user_profiles_table_name" {
   value       = module.user_profiles.table_name
 }
 
+output "frontend_s3_bucket_name" {
+  description = "S3 bucket for frontend static hosting"
+  value       = module.frontend_s3.bucket_id
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for frontend"
+  value       = module.frontend_cloudfront.distribution_id
+}
+
+output "frontend_url" {
+  description = "Frontend URL (CloudFront)"
+  value       = "https://${module.frontend_cloudfront.distribution_domain_name}"
+}
+
 output "build_environment_variables" {
   description = "JSON object of build env vars for frontend"
   value = jsonencode({
@@ -50,8 +65,8 @@ output "build_environment_variables" {
     NEXT_PUBLIC_COGNITO_USER_POOL_ID        = module.cognito.user_pool_id
     NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID = module.cognito.client_id
     NEXT_PUBLIC_COGNITO_DOMAIN              = "${module.cognito.domain}.auth.${local.region}.amazoncognito.com"
-    NEXT_PUBLIC_REDIRECT_SIGN_IN            = length(var.cognito_callback_urls) > 0 ? var.cognito_callback_urls[0] : "http://localhost:5173/auth/callback"
-    NEXT_PUBLIC_REDIRECT_SIGN_OUT           = length(var.cognito_logout_urls) > 0 ? var.cognito_logout_urls[0] : "http://localhost:5173"
+    NEXT_PUBLIC_REDIRECT_SIGN_IN            = "https://${module.frontend_cloudfront.distribution_domain_name}/auth/callback"
+    NEXT_PUBLIC_REDIRECT_SIGN_OUT           = "https://${module.frontend_cloudfront.distribution_domain_name}"
     NEXT_PUBLIC_API_GATEWAY_URL             = ""
   })
 }
