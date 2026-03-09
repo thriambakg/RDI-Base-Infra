@@ -1,0 +1,62 @@
+# Bootstrap Terraform State Backend
+# Run this workflow ONCE to create S3 bucket and DynamoDB table for state storage
+# After success: update backend-configs/*.tfbackend with your AWS account ID
+
+name: Bootstrap Terraform State
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    name: 'Bootstrap S3 + DynamoDB'
+    runs-on: ubuntu-latest
+    environment: bootstrap
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Terraform Init (Bootstrap)
+        run: terraform init
+        working-directory: terraform/bootstrap
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: terraform/bootstrap
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: terraform/bootstrap
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: terraform/bootstrap
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Output Backend Config
+        id: output
+        run: |
+          echo "## Bootstrap complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Bucket:** $(terraform output -raw state_bucket_name)" >> $GITHUB_STEP_SUMMARY
+          echo "**DynamoDB Table:** $(terraform output -raw lock_table_name)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Update \`backend-configs/staging.tfbackend\` and \`backend-configs/production.tfbackend\`:" >> $GITHUB_STEP_SUMMARY
+          echo "Replace \`ACCOUNT_ID\` with: \`aws sts get-caller-identity --query Account --output text\`" >> $GITHUB_STEP_SUMMARY
+        working-directory: terraform/bootstrap
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

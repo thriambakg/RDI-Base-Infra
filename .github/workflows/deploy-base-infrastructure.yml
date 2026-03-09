@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - prod
-      - develop
       - staging
     paths:
       - 'terraform/**'
@@ -14,8 +12,6 @@ on:
   pull_request:
     branches:
       - main
-      - prod
-      - develop
       - staging
     paths:
       - 'terraform/**'
@@ -48,23 +44,26 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
+      regions: ${{ steps.env.outputs.regions }}
     steps:
       - name: Determine Environment
         id: env
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            ENV="${{ github.event.inputs.environment }}"
           elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/prod" ]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
-            echo "environment=staging" >> $GITHUB_OUTPUT
+            ENV="production"
           elif [ "${{ github.ref }}" == "refs/heads/staging" ]; then
-            echo "environment=staging" >> $GITHUB_OUTPUT
+            ENV="staging"
           else
             echo "⚠️ Unknown branch: ${{ github.ref }} - defaulting to staging" >> $GITHUB_STEP_SUMMARY
-            echo "environment=staging" >> $GITHUB_OUTPUT
+            ENV="staging"
+          fi
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          if [ "${ENV}" == "staging" ]; then
+            echo 'regions=["us-east-2"]' >> $GITHUB_OUTPUT
+          else
+            echo 'regions=["eu-central-1","eu-west-2","eu-west-3"]' >> $GITHUB_OUTPUT
           fi
 
   python-security:
@@ -130,6 +129,7 @@ jobs:
   build-lambda-layers:
     name: 'Build Lambda Layers'
     needs: [determine-environment, python-security]
+    if: hashFiles('terraform/modules/lambda-layer/**') != ''
     runs-on: ubuntu-latest
     outputs:
       layers-built: ${{ steps.build.outputs.layers-built }}
@@ -250,17 +250,23 @@ jobs:
           retention-days: 7
 
   deploy-base-infrastructure:
-    name: 'Deploy Base Infrastructure'
+    name: 'Deploy Base Infrastructure - ${{ matrix.region }}'
     needs: [determine-environment, build-lambda-layers]
-    uses: thriambakg/Cosine-pipelines/.github/workflows/terraform-reusable.yml@master
+    if: always() && (needs.build-lambda-layers.result == 'success' || needs.build-lambda-layers.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        region: ${{ fromJson(needs.determine-environment.outputs.regions) }}
+    uses: thriambakg/RDI-Pipelines/.github/workflows/terraform-reusable.yml@main
     with:
       terraform_directory: 'terraform'
       infrastructure_type: 'base'
       environment: ${{ needs.determine-environment.outputs.environment }}
+      region: ${{ matrix.region }}
       destroy: ${{ github.event.inputs.destroy == 'true' }}
       force_apply: ${{ github.event.inputs.force_apply == 'true' }}
       base_infra_dependency: false
-      has_lambda_layer: true
+      has_lambda_layer: false
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

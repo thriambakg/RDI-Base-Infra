@@ -1,0 +1,15 @@
+# Copy to staging.tfbackend and replace ACCOUNT_ID with your AWS account ID
+# Get account ID: aws sts get-caller-identity --query Account --output text
+# Or run: cd terraform/bootstrap && terraform output
+#
+# bucket         = "rdi-terraform-state-ACCOUNT_ID"
+# key            = "base-infra/staging/terraform.tfstate"
+# region         = "eu-central-1"
+# dynamodb_table = "rdi-terraform-locks"
+# encrypt        = true
+
+bucket         = "rdi-terraform-state-ACCOUNT_ID"
+key            = "base-infra/staging/terraform.tfstate"
+region         = "eu-central-1"
+dynamodb_table = "rdi-terraform-locks"
+encrypt        = true
