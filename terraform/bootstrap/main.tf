@@ -127,6 +127,7 @@ resource "aws_iam_user_policy" "github_actions_iam" {
           "iam:DeletePolicy",
           "iam:GetPolicy",
           "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
           "iam:CreatePolicyVersion",
           "iam:DeletePolicyVersion",
           "iam:CreateUser",
