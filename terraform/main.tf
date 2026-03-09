@@ -31,4 +31,6 @@ data "aws_region" "current" {}
 
 locals {
   is_primary_region = var.primary_region != "" && var.region == var.primary_region
+  # Keep data.aws_region for region-agnostic references
+  region = data.aws_region.current.name
 }

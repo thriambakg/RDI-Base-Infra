@@ -124,9 +124,62 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
+  terraform-validate-and-scan:
+    name: 'Terraform Validate & Scan'
+    needs: [determine-environment, python-security]
+    runs-on: ubuntu-latest
+    outputs:
+      validation_passed: ${{ steps.validate.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.5"
+      - name: Terraform Init
+        id: init
+        run: |
+          REGIONS='${{ needs.determine-environment.outputs.regions }}'
+          FIRST_REGION=$(echo $REGIONS | jq -r '.[0]')
+          if [ "$FIRST_REGION" != "null" ] && [ -n "$FIRST_REGION" ]; then
+            BACKEND_CONFIG="${{ needs.determine-environment.outputs.environment }}-${FIRST_REGION}.tfbackend"
+          else
+            BACKEND_CONFIG="${{ needs.determine-environment.outputs.environment }}.tfbackend"
+          fi
+          terraform init -backend-config="backend-configs/${BACKEND_CONFIG}"
+        working-directory: terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: terraform
+      - name: TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+      - name: TFLint Analysis
+        run: |
+          tflint --init
+          tflint --format compact
+        working-directory: terraform
+      - name: Trivy IaC Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: terraform
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          tf-vars: terraform/environments/${{ needs.determine-environment.outputs.environment }}.auto.tfvars
+          trivyignores: terraform/.trivyignore
+        continue-on-error: true
+      - name: Pass validation
+        id: validate
+        run: echo "passed=true" >> $GITHUB_OUTPUT
+
   check-lambda-layer:
     name: 'Check Lambda Layer'
-    needs: [determine-environment, python-security]
+    needs: [determine-environment, python-security, terraform-validate-and-scan]
     runs-on: ubuntu-latest
     outputs:
       has_lambda_layer: ${{ steps.check.outputs.has_lambda_layer }}
@@ -264,9 +317,9 @@ jobs:
           retention-days: 7
 
   deploy-base-infrastructure:
-    name: 'Deploy Base Infrastructure - ${{ matrix.region }}'
+    name: Deploy ${{ matrix.region }}
     needs: [determine-environment, build-lambda-layers, check-lambda-layer]
-    if: always() && (needs.build-lambda-layers.result == 'success' || needs.build-lambda-layers.result == 'skipped') && needs.check-lambda-layer.result == 'success'
+    if: always() && (needs.build-lambda-layers.result == 'success' || needs.build-lambda-layers.result == 'skipped') && needs.check-lambda-layer.result == 'success' && needs.terraform-validate-and-scan.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -281,6 +334,7 @@ jobs:
       force_apply: ${{ github.event.inputs.force_apply == 'true' }}
       base_infra_dependency: false
       has_lambda_layer: false
+      skip_validation: true
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -288,7 +342,7 @@ jobs:
   comment-pr:
     name: 'Comment on PR'
     runs-on: ubuntu-latest
-    needs: [determine-environment, build-lambda-layers, check-lambda-layer, deploy-base-infrastructure]
+    needs: [determine-environment, build-lambda-layers, check-lambda-layer, terraform-validate-and-scan, deploy-base-infrastructure]
     if: github.event_name == 'pull_request'
     steps:
       - name: Comment PR with Results
