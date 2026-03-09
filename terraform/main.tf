@@ -53,63 +53,6 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
-# IAM - GitHub Actions user for CI/CD
-# -----------------------------------------------------------------------------
-module "github_actions_user" {
-  source = "./modules/IAM/User"
-
-  user_name = "${local.name_prefix}-github-actions"
-
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/PowerUserAccess"
-  ]
-
-  inline_policies = {
-    "iam-for-terraform" = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Sid    = "AllowIAMForTerraform"
-          Effect = "Allow"
-          Action = [
-            "iam:CreateRole",
-            "iam:DeleteRole",
-            "iam:GetRole",
-            "iam:PassRole",
-            "iam:AttachRolePolicy",
-            "iam:DetachRolePolicy",
-            "iam:PutRolePolicy",
-            "iam:DeleteRolePolicy",
-            "iam:GetRolePolicy",
-            "iam:CreatePolicy",
-            "iam:DeletePolicy",
-            "iam:GetPolicy",
-            "iam:CreatePolicyVersion",
-            "iam:DeletePolicyVersion",
-            "iam:CreateUser",
-            "iam:DeleteUser",
-            "iam:GetUser",
-            "iam:ListAttachedUserPolicies",
-            "iam:AttachUserPolicy",
-            "iam:DetachUserPolicy",
-            "iam:PutUserPolicy",
-            "iam:DeleteUserPolicy",
-            "iam:TagPolicy",
-            "iam:TagUser"
-          ]
-          Resource = "*"
-        }
-      ]
-    })
-  }
-
-  tags = {
-    Purpose   = "Terraform CI/CD via GitHub Actions"
-    ManagedBy = "terraform"
-  }
-}
-
-# -----------------------------------------------------------------------------
 # KMS - for S3 and DynamoDB encryption
 # -----------------------------------------------------------------------------
 module "kms" {

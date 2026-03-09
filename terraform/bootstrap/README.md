@@ -50,8 +50,15 @@ terraform validate
 |----------|--------------|---------|
 | S3 Bucket | `rdi-terraform-state-{account_id}` | Stores Terraform state files |
 | DynamoDB Table | `rdi-terraform-locks` | State locking to prevent concurrent applies |
+| IAM User | `rdi-github-actions` | For GitHub Actions; create access keys after apply |
 
-The IAM user for GitHub Actions (`rdi-{env}-github-actions`) is created by the **main Terraform project**. After the first main apply, create access keys for that user and add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to GitHub Actions secrets.
+## After Bootstrap: Create Access Keys for GitHub Actions
+
+1. Open AWS Console → IAM → Users → `rdi-github-actions`
+2. Security credentials → Create access key → Application running outside AWS (e.g. GitHub Actions)
+3. Add to GitHub repo: Settings → Secrets and variables → Actions
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
 
 ## Pipeline Integration
 

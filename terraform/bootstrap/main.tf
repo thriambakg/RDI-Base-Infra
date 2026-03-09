@@ -83,7 +83,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
   }
 }
 
-# IAM user for GitHub Actions (pipeline runner) - grants permissions to create env-specific users
+# IAM user for GitHub Actions - generate access keys after apply
 resource "aws_iam_user" "github_actions" {
   name = "${local.name_prefix}-github-actions"
   path = "/"
@@ -95,11 +95,14 @@ resource "aws_iam_user" "github_actions" {
   }
 }
 
+# PowerUserAccess: full access to AWS services except IAM/Organizations
+# Sufficient for Terraform to manage EC2, Lambda, S3, DynamoDB, etc.
 resource "aws_iam_user_policy_attachment" "github_actions_power_user" {
   user       = aws_iam_user.github_actions.name
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
 }
 
+# Allow IAM read + limited write for Terraform-managed IAM resources
 resource "aws_iam_user_policy" "github_actions_iam" {
   name = "${local.name_prefix}-github-actions-iam"
   user = aws_iam_user.github_actions.name
@@ -133,8 +136,7 @@ resource "aws_iam_user_policy" "github_actions_iam" {
           "iam:DetachUserPolicy",
           "iam:PutUserPolicy",
           "iam:DeleteUserPolicy",
-          "iam:TagPolicy",
-          "iam:TagUser"
+          "iam:TagPolicy"
         ]
         Resource = "*"
       }
