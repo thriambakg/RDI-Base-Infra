@@ -1,3 +1,8 @@
+output "github_actions_user_name" {
+  description = "IAM user name for GitHub Actions CI/CD"
+  value       = module.github_actions_user.user_name
+}
+
 output "account_id" {
   description = "Current AWS account ID"
   value       = data.aws_caller_identity.current.account_id
