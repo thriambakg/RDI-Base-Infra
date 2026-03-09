@@ -7,7 +7,7 @@ on:
       - staging
     paths:
       - 'terraform/**'
-      - 'backend_app/**'
+      - 'src/**'
       - '.github/workflows/**'
   pull_request:
     branches:
@@ -15,7 +15,7 @@ on:
       - staging
     paths:
       - 'terraform/**'
-      - 'backend_app/**'
+      - 'src/**'
       - '.github/workflows/**'
   workflow_dispatch:
     inputs:
@@ -87,29 +87,27 @@ jobs:
 
       - name: Bandit (SAST)
         run: |
-          echo "🔍 Running Bandit on backend_app/src..."
-          bandit -r backend_app/src -f screen --severity-level medium \
-            -x backend_app/src/deprecated || true
+          echo "🔍 Running Bandit on src/..."
+          bandit -r src -f screen --severity-level medium -x src/deprecated || true
         continue-on-error: true
 
       - name: Semgrep (Python SAST)
         run: |
           echo "🔍 Running Semgrep Python rules..."
-          semgrep scan --config=p/python --config=p/security-audit \
-            --error --no-git-ignore backend_app/src 2>/dev/null || \
-          semgrep scan --config=auto --error --no-git-ignore backend_app/src 2>/dev/null || true
+          semgrep scan --config=p/python --config=p/security-audit --error --no-git-ignore src 2>/dev/null || \
+          semgrep scan --config=auto --error --no-git-ignore src 2>/dev/null || true
         continue-on-error: true
 
       - name: pip-audit (SCA)
         run: |
           echo "🔍 Scanning dependencies for known vulnerabilities..."
-          REQ_FILES=$(find backend_app -name "requirements.txt" -type f 2>/dev/null || true)
+          REQ_FILES=$(find src -name "requirements.txt" -type f 2>/dev/null || true)
           if [ -z "$REQ_FILES" ]; then
-            echo "✅ No requirements.txt in backend_app (dependencies via Lambda layers). Skipping pip-audit."
+            echo "✅ No requirements.txt in src. Skipping pip-audit."
             exit 0
           fi
           FAILED=0
-          for req in $REQ_FILES; do
+          for req in ${REQ_FILES}; do
             echo "--- $req ---"
             pip-audit -r "$req" || FAILED=1
           done
@@ -162,13 +160,12 @@ jobs:
 
       - name: Validate Python Syntax (Recursive)
         run: |
-          echo "🔍 Validating Python syntax for all files in backend_app/src..."
+          echo "🔍 Validating Python syntax for all files in src/..."
           
-          # Find all Python files recursively
-          PYTHON_FILES=$(find backend_app/src -name "*.py" -type f)
+          PYTHON_FILES=$(find src -name "*.py" -type f 2>/dev/null || true)
           
           if [ -z "$PYTHON_FILES" ]; then
-            echo "⚠️ No Python files found in backend_app/src"
+            echo "⚠️ No Python files found in src"
             exit 0
           fi
           
@@ -179,7 +176,7 @@ jobs:
           # Final validation - compile all files and capture errors
           FAILED=0
           ERROR_FILES=()
-          for file in $(find backend_app/src -name "*.py" -type f); do
+          for file in $(find src -name "*.py" -type f 2>/dev/null); do
             if ! python -m py_compile "$file" 2>&1 >/dev/null; then
               ERROR_OUTPUT=$(python -m py_compile "$file" 2>&1)
               echo "❌ Syntax error in: $file"
