@@ -31,6 +31,31 @@ data "aws_region" "current" {}
 
 locals {
   is_primary_region = var.primary_region != "" && var.region == var.primary_region
-  # Keep data.aws_region for region-agnostic references
-  region = data.aws_region.current.name
+  region            = data.aws_region.current.name
+  name_prefix       = "rdi-${var.environment}"
+  # Cognito domain must be globally unique; use account ID suffix
+  cognito_domain = "rdi-${var.environment}-${substr(data.aws_caller_identity.current.account_id, -6, 6)}"
+}
+
+module "cognito" {
+  source = "./modules/cognito"
+
+  name_prefix    = local.name_prefix
+  cognito_domain = local.cognito_domain
+  environment    = var.environment
+  callback_urls  = length(var.cognito_callback_urls) > 0 ? var.cognito_callback_urls : ["http://localhost:5173/auth/callback", "https://localhost/auth/callback"]
+  logout_urls    = length(var.cognito_logout_urls) > 0 ? var.cognito_logout_urls : ["http://localhost:5173", "https://localhost"]
+
+  enable_google        = var.enable_google_auth
+  google_client_id     = var.google_client_id
+  google_client_secret = var.google_client_secret
+
+  tags = {}
+}
+
+module "user_profiles" {
+  source = "./modules/user-profiles"
+
+  name_prefix = local.name_prefix
+  tags        = {}
 }

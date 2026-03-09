@@ -20,3 +20,35 @@ variable "primary_region" {
   type        = string
   default     = ""
 }
+
+variable "cognito_callback_urls" {
+  description = "Cognito OAuth callback URLs"
+  type        = list(string)
+  default     = []
+}
+
+variable "cognito_logout_urls" {
+  description = "Cognito logout redirect URLs"
+  type        = list(string)
+  default     = []
+}
+
+variable "enable_google_auth" {
+  description = "Enable Google identity provider"
+  type        = bool
+  default     = false
+}
+
+variable "google_client_id" {
+  description = "Google OAuth client ID"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "google_client_secret" {
+  description = "Google OAuth client secret"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
