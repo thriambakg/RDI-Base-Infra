@@ -44,6 +44,10 @@ resource "aws_cognito_user_pool" "main" {
     Project     = "rdi"
     Environment = var.environment
   })
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 resource "aws_cognito_user_pool_domain" "main" {

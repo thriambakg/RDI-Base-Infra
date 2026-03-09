@@ -82,3 +82,62 @@ resource "aws_dynamodb_table" "terraform_locks" {
     ManagedBy   = "terraform"
   }
 }
+
+# IAM user for GitHub Actions (pipeline runner) - grants permissions to create env-specific users
+resource "aws_iam_user" "github_actions" {
+  name = "${local.name_prefix}-github-actions"
+  path = "/"
+
+  tags = {
+    Name      = "${local.name_prefix}-github-actions"
+    Purpose   = "Terraform CI/CD via GitHub Actions"
+    ManagedBy = "terraform"
+  }
+}
+
+resource "aws_iam_user_policy_attachment" "github_actions_power_user" {
+  user       = aws_iam_user.github_actions.name
+  policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
+}
+
+resource "aws_iam_user_policy" "github_actions_iam" {
+  name = "${local.name_prefix}-github-actions-iam"
+  user = aws_iam_user.github_actions.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowIAMForTerraform"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:PassRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:CreatePolicy",
+          "iam:DeletePolicy",
+          "iam:GetPolicy",
+          "iam:CreatePolicyVersion",
+          "iam:DeletePolicyVersion",
+          "iam:CreateUser",
+          "iam:DeleteUser",
+          "iam:GetUser",
+          "iam:ListAttachedUserPolicies",
+          "iam:AttachUserPolicy",
+          "iam:DetachUserPolicy",
+          "iam:PutUserPolicy",
+          "iam:DeleteUserPolicy",
+          "iam:TagPolicy",
+          "iam:TagUser"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}

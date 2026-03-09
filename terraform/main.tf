@@ -94,7 +94,8 @@ module "github_actions_user" {
             "iam:DetachUserPolicy",
             "iam:PutUserPolicy",
             "iam:DeleteUserPolicy",
-            "iam:TagPolicy"
+            "iam:TagPolicy",
+            "iam:TagUser"
           ]
           Resource = "*"
         }
