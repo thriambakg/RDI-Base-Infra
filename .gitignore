@@ -1,11 +1,20 @@
 # .gitignore for Cosine Base Infrastructure
 
-# Terraform files
+# Terraform
 **/.terraform/*
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
+*tfplan*
 !.terraform.lock.hcl
 
+# Sensitive tfvars (keep *.auto.tfvars for non-secret config)
+*.tfvars
+!*.auto.tfvars
+
+# Bootstrap local state (runs with local backend)
+bootstrap/terraform.tfstate
+bootstrap/terraform.tfstate.backup
 
 # Crash log files
 crash.log
