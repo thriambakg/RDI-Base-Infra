@@ -135,6 +135,9 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.5"
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: terraform
       - name: Terraform Init
         id: init
         run: |
@@ -173,6 +176,35 @@ jobs:
           tf-vars: terraform/environments/${{ needs.determine-environment.outputs.environment }}.auto.tfvars
           trivyignores: terraform/.trivyignore
         continue-on-error: true
+      - name: Setup Terrascan
+        run: |
+          curl -L "$(curl -s https://api.github.com/repos/tenable/terrascan/releases/latest | grep -o -E "https://.+?_Linux_x86_64.tar.gz")" > terrascan.tar.gz
+          tar -xf terrascan.tar.gz terrascan && rm terrascan.tar.gz
+          sudo mv terrascan /usr/local/bin && chmod +x /usr/local/bin/terrascan
+      - name: Terrascan IaC Scan
+        run: |
+          terrascan scan -i terraform -d terraform \
+            --policy-type aws \
+            --severity high \
+            --verbose \
+            --output human
+        continue-on-error: true
+      - name: Setup Semgrep
+        run: pip install semgrep
+      - name: Semgrep Security Scan
+        run: |
+          semgrep --config=auto --config=p/terraform --config=p/aws --error --strict --verbose terraform
+        continue-on-error: true
+      - name: Security Scan Summary
+        run: |
+          echo "## 🔒 Terraform Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **TFLint:** Static analysis completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trivy:** Infrastructure security scan completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Terrascan:** Policy compliance scan completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Semgrep:** Code pattern analysis completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review the job logs above for detailed findings and remediation steps." >> $GITHUB_STEP_SUMMARY
       - name: Pass validation
         id: validate
         run: echo "passed=true" >> $GITHUB_OUTPUT
@@ -334,8 +366,6 @@ jobs:
       force_apply: ${{ github.event.inputs.force_apply == 'true' }}
       base_infra_dependency: false
       has_lambda_layer: false
-      skip_validation: true
-      skip_deployment_summary: true
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -393,7 +423,7 @@ jobs:
             - **Python SAST:** Bandit + Semgrep (Python)
             - **Python SCA:** pip-audit (dependencies)
             - **Secrets:** Gitleaks
-            - **TFLint / Trivy / Terrascan:** (reusable workflow)  
+            - **TFLint / Trivy / Terrascan / Semgrep:** Terraform IaC security scans (run once)  
             
             ### Next Steps:
             - Merge this PR to apply the infrastructure changes
