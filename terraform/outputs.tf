@@ -69,6 +69,5 @@ output "build_environment_variables" {
     NEXT_PUBLIC_REDIRECT_SIGN_OUT           = "https://${module.frontend_cloudfront.distribution_domain_name}"
     NEXT_PUBLIC_API_GATEWAY_URL             = ""
     ENABLE_GOOGLE_AUTH                      = tostring(var.enable_google_auth)
-    AVAILABLE_REGIONS                       = jsonencode(var.regions)
   })
 }
