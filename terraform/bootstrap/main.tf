@@ -19,6 +19,10 @@ terraform {
   }
 }
 
+provider "aws" {
+  region = var.region
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
@@ -138,7 +142,14 @@ resource "aws_iam_user_policy" "github_actions_iam" {
           "iam:DetachUserPolicy",
           "iam:PutUserPolicy",
           "iam:DeleteUserPolicy",
-          "iam:TagPolicy"
+          "iam:TagPolicy",
+          "iam:UntagPolicy",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:ListRoleTags",
+          "iam:TagUser",
+          "iam:UntagUser",
+          "iam:ListUserTags"
         ]
         Resource = "*"
       }
