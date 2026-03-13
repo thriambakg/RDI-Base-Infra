@@ -1,6 +1,6 @@
 environment    = "production"
 region         = "eu-central-1"
-regions        = ["eu-central-1", "eu-west-2"]
+regions        = ["eu-central-1"]
 primary_region = "eu-central-1"
 
 # Cognito - update with your CloudFront URL; localhost for local dev
