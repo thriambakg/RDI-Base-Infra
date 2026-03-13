@@ -63,9 +63,9 @@ jobs:
           fi
           echo "environment=${ENV}" >> $GITHUB_OUTPUT
           if [ "${ENV}" == "staging" ]; then
-            echo 'regions=["us-east-2"]' >> $GITHUB_OUTPUT
+            echo 'regions=["us-east-1"]' >> $GITHUB_OUTPUT
           else
-            echo 'regions=["eu-central-1","eu-west-2","eu-west-3"]' >> $GITHUB_OUTPUT
+            echo 'regions=["eu-central-1","eu-west-2"]' >> $GITHUB_OUTPUT
           fi
 
   python-security:
