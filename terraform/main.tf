@@ -53,17 +53,6 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
-# KMS - for S3 and DynamoDB encryption
-# -----------------------------------------------------------------------------
-module "kms" {
-  source = "./modules/kms"
-
-  project_name = local.project_name
-  environment  = var.environment
-  tags         = {}
-}
-
-# -----------------------------------------------------------------------------
 # Cognito - User Pool, Client, Domain (RDI-specific, minimal)
 # -----------------------------------------------------------------------------
 module "cognito" {
@@ -100,7 +89,7 @@ module "user_profiles" {
   hash_key      = "user_id"
   range_key     = null
   billing_mode  = "PAY_PER_REQUEST"
-  kms_key_arn   = module.kms.dynamodb_key_arn
+  kms_key_arn   = null
   table_type    = "UserProfiles"
   table_purpose = "UserProfileStorage"
 
@@ -129,7 +118,7 @@ module "frontend_s3" {
   bucket_name   = "rdi-frontend-${var.environment}-${data.aws_caller_identity.current.account_id}"
   environment   = var.environment
   purpose       = "frontend"
-  kms_key_arn   = module.kms.main_key_arn
+  kms_key_arn   = null
   force_destroy = var.environment != "production"
 
   allow_cloudfront_oac = true

@@ -36,7 +36,7 @@ resource "aws_dynamodb_table" "this" {
     }
   }
 
-  # Server-side encryption
+  # Server-side encryption (AWS-owned key when kms_key_arn is null)
   server_side_encryption {
     enabled     = true
     kms_key_arn = var.kms_key_arn

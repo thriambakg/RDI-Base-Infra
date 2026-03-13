@@ -103,8 +103,9 @@ variable "ttl_attribute_name" {
 }
 
 variable "kms_key_arn" {
-  description = "KMS key ARN for encryption"
+  description = "KMS key ARN for encryption. If null, uses AWS-owned key (default)."
   type        = string
+  default     = null
 }
 
 variable "tags" {
