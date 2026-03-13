@@ -1,6 +1,6 @@
 # Run terraform/bootstrap first, then replace ACCOUNT_ID with: aws sts get-caller-identity --query Account --output text
 bucket         = "rdi-terraform-state-470900128247"
-key            = "base-infra/staging/us-east-2/terraform.tfstate"
+key            = "base-infra/staging/us-east-1/terraform.tfstate"
 region         = "eu-central-1"
 dynamodb_table = "rdi-terraform-locks"
 encrypt        = true
