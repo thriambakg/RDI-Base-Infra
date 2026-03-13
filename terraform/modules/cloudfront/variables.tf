@@ -11,6 +11,11 @@ variable "environment" {
   type        = string
 }
 
+variable "account_id" {
+  description = "AWS account ID for unique resource names (avoids conflicts across deployments)"
+  type        = string
+}
+
 variable "s3_bucket_domain_name" {
   description = "Domain name of the S3 bucket origin"
   type        = string

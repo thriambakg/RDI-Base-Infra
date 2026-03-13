@@ -2,8 +2,11 @@
 # CloudFront distribution module with S3 origin
 
 locals {
+  name_suffix       = "${var.environment}-${var.account_id}"
   distribution_name = "${var.project_name}-cloudfront-${var.environment}"
-  oac_name          = "${var.project_name}-oac-${var.environment}"
+  oac_name          = "${var.project_name}-oac-${local.name_suffix}"
+  cache_policy_name = "${var.project_name}-cache-policy-${local.name_suffix}"
+  origin_req_name   = "${var.project_name}-origin-request-policy-${local.name_suffix}"
 }
 
 # Origin Access Control for S3
@@ -389,7 +392,7 @@ resource "aws_cloudfront_distribution" "distribution" {
 
 # Cache Policy for optimized caching
 resource "aws_cloudfront_cache_policy" "default" {
-  name        = "${var.project_name}-cache-policy-${var.environment}"
+  name        = local.cache_policy_name
   comment     = "Cache policy for ${var.project_name}"
   default_ttl = var.default_cache_behavior_settings.default_ttl
   max_ttl     = var.default_cache_behavior_settings.max_ttl
@@ -415,7 +418,7 @@ resource "aws_cloudfront_cache_policy" "default" {
 
 # Origin Request Policy
 resource "aws_cloudfront_origin_request_policy" "default" {
-  name    = "${var.project_name}-origin-request-policy-${var.environment}"
+  name    = local.origin_req_name
   comment = "Origin request policy for ${var.project_name}"
 
   headers_config {

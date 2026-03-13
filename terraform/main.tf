@@ -116,7 +116,7 @@ module "user_profiles" {
 module "frontend_s3" {
   source = "./modules/s3"
 
-  bucket_name   = "rdi-frontend-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  bucket_name   = "rdi-frontend-${var.environment}-${var.region}-${data.aws_caller_identity.current.account_id}"
   environment   = var.environment
   purpose       = "frontend"
   kms_key_arn   = null
@@ -140,6 +140,7 @@ module "frontend_cloudfront" {
 
   project_name = local.project_name
   environment  = var.environment
+  account_id   = data.aws_caller_identity.current.account_id
 
   s3_bucket_domain_name = module.frontend_s3.bucket_regional_domain_name
   s3_bucket_id          = module.frontend_s3.bucket_id
