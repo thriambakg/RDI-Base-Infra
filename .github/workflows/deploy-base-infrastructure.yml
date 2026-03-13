@@ -204,149 +204,10 @@ jobs:
         id: validate
         run: echo "passed=true" >> $GITHUB_OUTPUT
 
-  check-lambda-layer:
-    name: 'Check Lambda Layer'
-    needs: [determine-environment, python-security, terraform-validate-and-scan]
-    runs-on: ubuntu-latest
-    outputs:
-      has_lambda_layer: ${{ steps.check.outputs.has_lambda_layer }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check for lambda layer
-        id: check
-        run: |
-          if [ -d "terraform/modules/lambda-layer" ] && [ -n "$(find terraform/modules/lambda-layer -type f 2>/dev/null)" ]; then
-            echo "has_lambda_layer=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_lambda_layer=false" >> $GITHUB_OUTPUT
-          fi
-
-  build-lambda-layers:
-    name: 'Build Lambda Layers'
-    needs: [determine-environment, python-security, check-lambda-layer]
-    if: needs.check-lambda-layer.outputs.has_lambda_layer == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      layers-built: ${{ steps.build.outputs.layers-built }}
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Validate Python Syntax (Recursive)
-        run: |
-          echo "🔍 Validating Python syntax for all files in src/..."
-          
-          PYTHON_FILES=$(find src -name "*.py" -type f 2>/dev/null || true)
-          
-          if [ -z "$PYTHON_FILES" ]; then
-            echo "⚠️ No Python files found in src"
-            exit 0
-          fi
-          
-          # Count files
-          FILE_COUNT=$(echo "$PYTHON_FILES" | wc -l)
-          echo "📊 Found $FILE_COUNT Python file(s) to validate"
-          
-          # Final validation - compile all files and capture errors
-          FAILED=0
-          ERROR_FILES=()
-          for file in $(find src -name "*.py" -type f 2>/dev/null); do
-            if ! python -m py_compile "$file" 2>&1 >/dev/null; then
-              ERROR_OUTPUT=$(python -m py_compile "$file" 2>&1)
-              echo "❌ Syntax error in: $file"
-              echo "$ERROR_OUTPUT"
-              ERROR_FILES+=("$file")
-              FAILED=1
-            fi
-          done
-          
-          if [ $FAILED -eq 1 ]; then
-            echo ""
-            echo "❌ Python syntax validation failed!"
-            echo "Files with errors: ${#ERROR_FILES[@]}"
-            echo "Please fix all syntax errors before proceeding."
-            exit 1
-          fi
-          
-          echo "✅ All $FILE_COUNT Python files passed syntax validation!"
-
-      - name: Install Python Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install boto3
-
-      - name: Build Lambda Layers
-        id: build
-        run: |
-          cd terraform/modules/lambda-layer
-          
-          echo "🔧 Building Lambda Layers for environment: ${{ needs.determine-environment.outputs.environment }}"
-          
-          # Make build scripts executable
-          chmod +x build-layer.sh
-          
-          # Extract layer names from main.tf
-          echo "🔍 Discovering layers defined in main.tf..."
-          LAYERS_TO_BUILD=()
-          
-          # Look for layer_name_suffix in main.tf
-          while IFS= read -r line; do
-            if [[ $line =~ layer_name_suffix.*=.*\"([^\"]+)\" ]]; then
-              layer_name="${BASH_REMATCH[1]}"
-              LAYERS_TO_BUILD+=("$layer_name")
-              echo "📦 Found layer: $layer_name"
-            fi
-          done < ../../main.tf
-          
-          if [ ${#LAYERS_TO_BUILD[@]} -eq 0 ]; then
-            echo "❌ No layers found in main.tf"
-            exit 1
-          fi
-          
-          echo "🎯 Building layers: ${LAYERS_TO_BUILD[*]}"
-          
-          # Build each discovered layer
-          for layer in "${LAYERS_TO_BUILD[@]}"; do
-            echo "🔨 Building layer: $layer"
-            ./build-layer.sh "$layer"
-          done
-          
-          # Verify built layers
-          echo "🔍 Verifying built layers..."
-          layer_count=0
-          for layer_file in layer-*.zip; do
-            if [ -f "$layer_file" ]; then
-              size=$(du -h "$layer_file" | cut -f1)
-              echo "✅ $layer_file found (${size})"
-              layer_count=$((layer_count + 1))
-            fi
-          done
-          
-          if [ $layer_count -eq 0 ]; then
-            echo "❌ No layer files found"
-            exit 1
-          fi
-          
-          echo "✅ Successfully built $layer_count Lambda layer artifacts"
-          echo "layers-built=true" >> $GITHUB_OUTPUT
-
-      - name: Upload Lambda Layer Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: lambda-layers-${{ needs.determine-environment.outputs.environment }}
-          path: terraform/modules/lambda-layer/layer-*.zip
-          retention-days: 7
-
   deploy-base-infrastructure:
     name: Deploy Base Infrastructure
-    needs: [determine-environment, build-lambda-layers, check-lambda-layer]
-    if: always() && (needs.build-lambda-layers.result == 'success' || needs.build-lambda-layers.result == 'skipped') && needs.check-lambda-layer.result == 'success' && needs.terraform-validate-and-scan.result == 'success'
+    needs: [determine-environment, terraform-validate-and-scan]
+    if: needs.terraform-validate-and-scan.result == 'success'
     uses: thriambakg/RDI-Pipelines/.github/workflows/terraform-reusable.yml@main
     with:
       terraform_directory: 'terraform'
@@ -378,7 +239,7 @@ jobs:
   comment-pr:
     name: 'Comment on PR'
     runs-on: ubuntu-latest
-    needs: [determine-environment, build-lambda-layers, check-lambda-layer, terraform-validate-and-scan, deploy-base-infrastructure]
+    needs: [determine-environment, terraform-validate-and-scan, deploy-base-infrastructure]
     if: github.event_name == 'pull_request'
     steps:
       - name: Comment PR with Results
