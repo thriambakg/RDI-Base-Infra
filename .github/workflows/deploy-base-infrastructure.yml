@@ -9,6 +9,7 @@ on:
       - 'terraform/**'
       - 'src/**'
       - '.github/workflows/**'
+      - '.github/workflows/deploy-base-infrastructure.yml'
   pull_request:
     branches:
       - main
@@ -17,6 +18,7 @@ on:
       - 'terraform/**'
       - 'src/**'
       - '.github/workflows/**'
+      - '.github/workflows/deploy-base-infrastructure.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -391,20 +393,14 @@ jobs:
             - **Environment:** ${{ needs.determine-environment.outputs.environment }}
             - **Infrastructure Type:** Base Infrastructure (single deployment for global resources)
             - **Dependencies:** Self-contained (creates backend resources)
-            - **Lambda Layers:** ✅ Core, Financial, Crypto, and News dependencies layers
-            - **Lambda Functions:** ✅ Backend application code included
-            
+
             ### Infrastructure Components:
             - **KMS Keys:** ✅ Encryption keys for all services
             - **Cognito:** ✅ User authentication and authorization
-            - **DynamoDB:** ✅ Data storage tables (including news table)
+            - **DynamoDB:** ✅ Data storage tables
             - **CloudWatch:** ✅ Logging and monitoring
-            - **Secrets Manager:** ✅ Secure credential storage (OAuth + NewsData)
+            - **Secrets Manager:** ✅ Secure credential storage
             - **S3 Buckets:** ✅ Static hosting and file storage
-            - **Lambda Layers:** ✅ Core, Financial, Crypto, and News dependencies
-            - **Lambda Functions:** ✅ Stock data fetchers, news fetchers, and processors
-            - **SQS Queues:** ✅ Message queuing for async processing
-            - **EventBridge:** ✅ Scheduled triggers for data fetching
             
             ### Security Scans:
             - **Python SAST:** Bandit + Semgrep (Python)
