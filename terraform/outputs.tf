@@ -43,6 +43,16 @@ output "user_profiles_table_name" {
   value       = module.user_profiles.table_name
 }
 
+output "connection_pool_table_name" {
+  description = "DynamoDB connection pool table name"
+  value       = module.connection_pool.table_name
+}
+
+output "connection_pool_table_arn" {
+  description = "DynamoDB connection pool table ARN"
+  value       = module.connection_pool.table_arn
+}
+
 output "frontend_s3_bucket_name" {
   description = "S3 bucket for frontend static hosting"
   value       = module.frontend_s3.bucket_id

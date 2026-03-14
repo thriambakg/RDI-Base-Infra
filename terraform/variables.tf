@@ -21,6 +21,12 @@ variable "primary_region" {
   default     = ""
 }
 
+variable "dynamodb_replica_regions" {
+  description = "Regions for DynamoDB global table replicas (e.g. eu-west-2, eu-west-3). Empty for staging."
+  type        = list(string)
+  default     = []
+}
+
 variable "cognito_callback_urls" {
   description = "Cognito OAuth callback URLs"
   type        = list(string)

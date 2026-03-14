@@ -111,6 +111,48 @@ module "user_profiles" {
 }
 
 # -----------------------------------------------------------------------------
+# DynamoDB - Connection pool table (session/slot management)
+# -----------------------------------------------------------------------------
+module "connection_pool" {
+  source = "./modules/dynamodb-table"
+
+  project_name     = local.project_name
+  environment      = var.environment
+  table_name       = "connection-pool"
+  hash_key         = "region"
+  range_key        = "session_id"
+  billing_mode     = "PAY_PER_REQUEST"
+  kms_key_arn      = null
+  table_type       = "ConnectionPool"
+  table_purpose    = "SessionAndProxySlotManagement"
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+  replica_regions  = var.dynamodb_replica_regions
+
+  attributes = [
+    { name = "region", type = "S" },
+    { name = "session_id", type = "S" },
+    { name = "status", type = "S" },
+    { name = "user_id", type = "S" },
+    { name = "created_at", type = "N" }
+  ]
+
+  global_secondary_indexes = [
+    {
+      name            = "status-index"
+      hash_key        = "region"
+      range_key       = "status"
+      projection_type = "ALL"
+    }
+  ]
+
+  ttl_enabled        = true
+  ttl_attribute_name = "expires_at"
+
+  tags = {}
+}
+
+# -----------------------------------------------------------------------------
 # S3 - Frontend static assets bucket (generic module)
 # -----------------------------------------------------------------------------
 module "frontend_s3" {

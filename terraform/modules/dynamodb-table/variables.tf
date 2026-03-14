@@ -145,4 +145,10 @@ variable "additional_iam_policy_statements" {
   default     = []
 }
 
+variable "replica_regions" {
+  description = "List of regions for DynamoDB global table replicas. Requires stream_enabled=true. Empty = no replication."
+  type        = list(string)
+  default     = []
+}
+
 

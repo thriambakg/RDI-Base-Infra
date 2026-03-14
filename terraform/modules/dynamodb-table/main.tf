@@ -6,9 +6,16 @@ resource "aws_dynamodb_table" "this" {
   billing_mode                = var.billing_mode
   hash_key                    = var.hash_key
   range_key                   = var.range_key
-  stream_enabled              = var.stream_enabled
-  stream_view_type            = var.stream_enabled ? var.stream_view_type : null
+  stream_enabled              = var.stream_enabled || length(var.replica_regions) > 0
+  stream_view_type            = (var.stream_enabled || length(var.replica_regions) > 0) ? coalesce(var.stream_view_type, "NEW_AND_OLD_IMAGES") : null
   deletion_protection_enabled = var.deletion_protection_enabled
+
+  dynamic "replica" {
+    for_each = var.replica_regions
+    content {
+      region_name = replica.value
+    }
+  }
 
   # Capacity settings for provisioned mode
   read_capacity  = var.billing_mode == "PROVISIONED" ? var.read_capacity : null
