@@ -133,8 +133,7 @@ module "connection_pool" {
     { name = "region", type = "S" },
     { name = "session_id", type = "S" },
     { name = "status", type = "S" },
-    { name = "user_id", type = "S" },
-    { name = "created_at", type = "N" }
+    { name = "expires_at", type = "N" }
   ]
 
   global_secondary_indexes = [
