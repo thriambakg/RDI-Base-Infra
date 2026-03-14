@@ -3,6 +3,11 @@ output "account_id" {
   value       = data.aws_caller_identity.current.account_id
 }
 
+output "api_gateway_cloudwatch_role_arn" {
+  description = "ARN of IAM role for API Gateway CloudWatch execution logging"
+  value       = module.api_gateway_cloudwatch_role.role_arn
+}
+
 output "region" {
   description = "AWS region for this deployment"
   value       = local.region

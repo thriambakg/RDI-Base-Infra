@@ -54,6 +54,33 @@ locals {
 }
 
 # -----------------------------------------------------------------------------
+# IAM - API Gateway CloudWatch Logs role (account-level; required for execution logging)
+# -----------------------------------------------------------------------------
+module "api_gateway_cloudwatch_role" {
+  source = "./modules/iam-role"
+
+  role_name   = "${local.name_prefix}-api-gateway-cloudwatch"
+  description = "Allows API Gateway to push execution logs to CloudWatch"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "apigateway.amazonaws.com"
+      }
+    }]
+  })
+
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+  ]
+
+  tags = {}
+}
+
+# -----------------------------------------------------------------------------
 # Cognito - User Pool, Client, Domain (RDI-specific, minimal)
 # -----------------------------------------------------------------------------
 module "cognito" {
