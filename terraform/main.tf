@@ -41,6 +41,20 @@ provider "aws" {
   }
 }
 
+# Replica region provider for flight logs bucket (cross-region replication in prod)
+provider "aws" {
+  alias  = "flight_logs_replica"
+  region = coalesce(var.flight_logs_replica_region, var.region)
+
+  default_tags {
+    tags = {
+      Project     = "rdi"
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
@@ -139,6 +153,7 @@ module "user_profiles" {
 
 # -----------------------------------------------------------------------------
 # DynamoDB - Connection pool table (session/slot management)
+# PK: user_id, SK: session_id — user-centric access; region/wavelength_zone as attributes
 # -----------------------------------------------------------------------------
 module "connection_pool" {
   source = "./modules/dynamodb-table"
@@ -146,7 +161,7 @@ module "connection_pool" {
   project_name     = local.project_name
   environment      = var.environment
   table_name       = "connection-pool"
-  hash_key         = "region"
+  hash_key         = "user_id"
   range_key        = "session_id"
   billing_mode     = "PAY_PER_REQUEST"
   kms_key_arn      = null
@@ -157,16 +172,24 @@ module "connection_pool" {
   replica_regions  = var.dynamodb_replica_regions
 
   attributes = [
-    { name = "region", type = "S" },
+    { name = "user_id", type = "S" },
     { name = "session_id", type = "S" },
-    { name = "status", type = "S" }
+    { name = "region", type = "S" },
+    { name = "wavelength_zone_id", type = "S" },
+    { name = "status", type = "S" },
+    { name = "user_zone_sk", type = "S" }
   ]
 
   global_secondary_indexes = [
     {
-      name            = "status-index"
-      hash_key        = "region"
-      range_key       = "status"
+      name            = "UserZoneIndex"
+      hash_key        = "user_id"
+      range_key       = "user_zone_sk"
+      projection_type = "ALL"
+    },
+    {
+      name            = "SessionIdIndex"
+      hash_key        = "session_id"
       projection_type = "ALL"
     }
   ]
@@ -175,6 +198,34 @@ module "connection_pool" {
   ttl_attribute_name = "expires_at"
 
   tags = {}
+}
+
+# -----------------------------------------------------------------------------
+# S3 - Flight logs bucket (EC2 writes logs on session close)
+# Path: {user_id}/{wavelength_zone_id}/{drone_id}-{session_id}.log
+# Replication: prod (2 regions), staging (single region)
+# -----------------------------------------------------------------------------
+module "flight_logs_s3" {
+  source = "./modules/s3"
+  count  = local.is_primary_region ? 1 : 0
+
+  bucket_name   = "rdi-flight-logs-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  environment   = var.environment
+  purpose       = "flight-logs"
+  kms_key_arn   = null
+  force_destroy = var.environment != "production"
+
+  enable_cross_region_replication = var.flight_logs_replica_region != "" && var.flight_logs_replica_region != var.region
+  allow_cloudfront_oac            = false
+  block_public_acls               = true
+  block_public_policy             = true
+  access_log_bucket               = ""
+  tags                            = {}
+
+  providers = {
+    aws         = aws
+    aws.replica = aws.flight_logs_replica
+  }
 }
 
 # -----------------------------------------------------------------------------

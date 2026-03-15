@@ -58,6 +58,16 @@ output "connection_pool_table_arn" {
   value       = module.connection_pool.table_arn
 }
 
+output "flight_logs_bucket_name" {
+  description = "S3 bucket for flight logs (EC2 uploads on session close)"
+  value       = length(module.flight_logs_s3) > 0 ? module.flight_logs_s3[0].bucket_id : null
+}
+
+output "flight_logs_bucket_arn" {
+  description = "S3 bucket ARN for flight logs"
+  value       = length(module.flight_logs_s3) > 0 ? module.flight_logs_s3[0].bucket_arn : null
+}
+
 output "frontend_s3_bucket_name" {
   description = "S3 bucket for frontend static hosting"
   value       = module.frontend_s3.bucket_id

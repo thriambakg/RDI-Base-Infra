@@ -58,3 +58,9 @@ variable "google_client_secret" {
   default     = ""
   sensitive   = true
 }
+
+variable "flight_logs_replica_region" {
+  description = "Region for flight logs bucket replica (enables cross-region replication). Set for prod with 2+ regions."
+  type        = string
+  default     = ""
+}
