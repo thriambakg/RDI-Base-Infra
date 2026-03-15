@@ -171,12 +171,10 @@ module "connection_pool" {
   stream_view_type = "NEW_AND_OLD_IMAGES"
   replica_regions  = var.dynamodb_replica_regions
 
+  # Only key attributes — region, status, wavelength_zone_id, etc. are regular item attrs (no index)
   attributes = [
     { name = "user_id", type = "S" },
     { name = "session_id", type = "S" },
-    { name = "region", type = "S" },
-    { name = "wavelength_zone_id", type = "S" },
-    { name = "status", type = "S" },
     { name = "user_zone_sk", type = "S" }
   ]
 
