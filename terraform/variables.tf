@@ -64,3 +64,9 @@ variable "flight_logs_replica_region" {
   type        = string
   default     = ""
 }
+
+variable "frontend_custom_domain" {
+  description = "Custom domain for the frontend (e.g. rdistaging.com). Route53 zone must exist (e.g. created by RDI-1.0 domain module). CloudFront will be given this alias and an ACM cert; apex and www A records point to CloudFront."
+  type        = string
+  default     = ""
+}

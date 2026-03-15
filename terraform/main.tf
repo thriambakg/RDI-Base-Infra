@@ -249,6 +249,50 @@ module "frontend_s3" {
 }
 
 # -----------------------------------------------------------------------------
+# Frontend custom domain: ACM cert (CloudFront requires us-east-1; zone must exist, e.g. from RDI-1.0)
+# -----------------------------------------------------------------------------
+data "aws_route53_zone" "frontend" {
+  count        = var.frontend_custom_domain != "" ? 1 : 0
+  name         = "${var.frontend_custom_domain}."
+  private_zone = false
+}
+
+resource "aws_acm_certificate" "frontend" {
+  count             = var.frontend_custom_domain != "" ? 1 : 0
+  domain_name       = var.frontend_custom_domain
+  validation_method = "DNS"
+
+  subject_alternative_names = ["www.${var.frontend_custom_domain}"]
+
+  lifecycle { create_before_destroy = true }
+
+  tags = { Name = "${local.name_prefix}-frontend-${var.frontend_custom_domain}" }
+}
+
+resource "aws_route53_record" "frontend_cert_validation" {
+  for_each = var.frontend_custom_domain != "" && length(aws_acm_certificate.frontend) > 0 ? {
+    for dvo in aws_acm_certificate.frontend[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.frontend[0].zone_id
+}
+
+resource "aws_acm_certificate_validation" "frontend" {
+  count                   = var.frontend_custom_domain != "" && length(aws_acm_certificate.frontend) > 0 ? 1 : 0
+  certificate_arn         = aws_acm_certificate.frontend[0].arn
+  validation_record_fqdns = [for r in aws_route53_record.frontend_cert_validation : r.fqdn]
+}
+
+# -----------------------------------------------------------------------------
 # CloudFront - Global CDN for frontend (generic module)
 # -----------------------------------------------------------------------------
 module "frontend_cloudfront" {
@@ -262,8 +306,8 @@ module "frontend_cloudfront" {
   s3_bucket_id          = module.frontend_s3.bucket_id
   s3_bucket_arn         = module.frontend_s3.bucket_arn
 
-  aliases             = []
-  acm_certificate_arn = null
+  aliases             = var.frontend_custom_domain != "" ? [var.frontend_custom_domain, "www.${var.frontend_custom_domain}"] : []
+  acm_certificate_arn = var.frontend_custom_domain != "" && length(aws_acm_certificate_validation.frontend) > 0 ? aws_acm_certificate_validation.frontend[0].certificate_arn : null
   create_waf          = false
   enable_logging      = false
   default_root_object = "index.html"
@@ -274,4 +318,31 @@ module "frontend_cloudfront" {
   ]
 
   tags = {}
+}
+
+# Route53 A (alias) for apex and www -> CloudFront (so rdistaging.com and www.rdistaging.com serve the frontend)
+resource "aws_route53_record" "frontend_apex" {
+  count   = var.frontend_custom_domain != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.frontend[0].zone_id
+  name    = var.frontend_custom_domain
+  type    = "A"
+
+  alias {
+    name                   = module.frontend_cloudfront.distribution_domain_name
+    zone_id                = module.frontend_cloudfront.distribution_hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "frontend_www" {
+  count   = var.frontend_custom_domain != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.frontend[0].zone_id
+  name    = "www.${var.frontend_custom_domain}"
+  type    = "A"
+
+  alias {
+    name                   = module.frontend_cloudfront.distribution_domain_name
+    zone_id                = module.frontend_cloudfront.distribution_hosted_zone_id
+    evaluate_target_health = false
+  }
 }
