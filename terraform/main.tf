@@ -199,6 +199,45 @@ module "connection_pool" {
 }
 
 # -----------------------------------------------------------------------------
+# DynamoDB - Relay registry (relays per Wavelength zone)
+# PK: wavelength_zone_id, SK: relay_id — zone-centric; same replica pattern as connection-pool
+# -----------------------------------------------------------------------------
+module "relay_registry" {
+  source = "./modules/dynamodb-table"
+
+  project_name     = local.project_name
+  environment      = var.environment
+  table_name       = "relay-registry"
+  hash_key         = "wavelength_zone_id"
+  range_key        = "relay_id"
+  billing_mode     = "PAY_PER_REQUEST"
+  kms_key_arn      = null
+  table_type       = "RelayRegistry"
+  table_purpose    = "RelaysPerWavelengthZone"
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+  replica_regions  = var.dynamodb_replica_regions
+
+  attributes = [
+    { name = "wavelength_zone_id", type = "S" },
+    { name = "relay_id", type = "S" },
+    { name = "user_id", type = "S" },
+    { name = "user_relay_sk", type = "S" }
+  ]
+
+  global_secondary_indexes = [
+    {
+      name            = "UserRelayIndex"
+      hash_key        = "user_id"
+      range_key       = "user_relay_sk"
+      projection_type = "ALL"
+    }
+  ]
+
+  tags = {}
+}
+
+# -----------------------------------------------------------------------------
 # S3 - Flight logs bucket (EC2 writes logs on session close)
 # Path: {user_id}/{wavelength_zone_id}/{drone_id}-{session_id}.log
 # Replication: prod (2 regions), staging (single region)

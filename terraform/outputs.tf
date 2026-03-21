@@ -58,6 +58,16 @@ output "connection_pool_table_arn" {
   value       = module.connection_pool.table_arn
 }
 
+output "relay_registry_table_name" {
+  description = "DynamoDB relay registry table name"
+  value       = module.relay_registry.table_name
+}
+
+output "relay_registry_table_arn" {
+  description = "DynamoDB relay registry table ARN"
+  value       = module.relay_registry.table_arn
+}
+
 output "flight_logs_bucket_name" {
   description = "S3 bucket for flight logs (EC2 uploads on session close)"
   value       = length(module.flight_logs_s3) > 0 ? module.flight_logs_s3[0].bucket_id : null
