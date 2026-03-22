@@ -171,11 +171,12 @@ module "connection_pool" {
   stream_view_type = "NEW_AND_OLD_IMAGES"
   replica_regions  = var.dynamodb_replica_regions
 
-  # Only key attributes — region, status, wavelength_zone_id, etc. are regular item attrs (no index)
+  # Key attributes — wavelength_zone_id required for ZoneIndex GSI (active-session reinstate on agent reboot)
   attributes = [
     { name = "user_id", type = "S" },
     { name = "session_id", type = "S" },
-    { name = "user_zone_sk", type = "S" }
+    { name = "user_zone_sk", type = "S" },
+    { name = "wavelength_zone_id", type = "S" }
   ]
 
   global_secondary_indexes = [
@@ -188,6 +189,12 @@ module "connection_pool" {
     {
       name            = "SessionIdIndex"
       hash_key        = "session_id"
+      projection_type = "ALL"
+    },
+    {
+      name            = "ZoneIndex"
+      hash_key        = "wavelength_zone_id"
+      range_key       = "session_id"
       projection_type = "ALL"
     }
   ]
