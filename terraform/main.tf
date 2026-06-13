@@ -222,7 +222,9 @@ module "relay_registry" {
     { name = "wavelength_zone_id", type = "S" },
     { name = "relay_id", type = "S" },
     { name = "user_id", type = "S" },
-    { name = "user_relay_sk", type = "S" }
+    { name = "user_relay_sk", type = "S" },
+    { name = "claim_code", type = "S" },
+    { name = "device_serial", type = "S" }
   ]
 
   global_secondary_indexes = [
@@ -230,6 +232,16 @@ module "relay_registry" {
       name            = "UserRelayIndex"
       hash_key        = "user_id"
       range_key       = "user_relay_sk"
+      projection_type = "ALL"
+    },
+    {
+      name            = "ClaimCodeIndex"
+      hash_key        = "claim_code"
+      projection_type = "ALL"
+    },
+    {
+      name            = "DeviceSerialIndex"
+      hash_key        = "device_serial"
       projection_type = "ALL"
     }
   ]
