@@ -65,9 +65,12 @@ resource "aws_lambda_function" "cognito_auth_triggers" {
 }
 
 resource "aws_lambda_permission" "cognito_post_auth" {
-  statement_id  = "AllowCognitoPostAuth"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.cognito_auth_triggers.function_name
-  principal     = "cognito-idp.amazonaws.com"
-  source_arn    = aws_cognito_user_pool.main.arn
+  statement_id   = "AllowCognitoPostAuth"
+  action         = "lambda:InvokeFunction"
+  function_name  = aws_lambda_function.cognito_auth_triggers.function_name
+  principal      = "cognito-idp.amazonaws.com"
+  source_arn     = aws_cognito_user_pool.main.arn
+  source_account = data.aws_caller_identity.current.account_id
 }
+
+data "aws_caller_identity" "current" {}
