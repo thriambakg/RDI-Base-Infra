@@ -8,10 +8,12 @@ resource "aws_cognito_user_pool" "main" {
   auto_verified_attributes = ["email"]
 
   # Signup verification: Cognito emails a clickable link (CONFIRM_WITH_LINK).
-  # Default Cognito sender (no-reply@verificationemail.com) until SES is configured.
-  # Custom HTML subject/body requires email_configuration { email_sending_account = "DEVELOPER" } + SES.
+  # Branded HTML body comes from the CustomMessage Lambda trigger.
+  # Default Cognito sender (no-reply@verificationemail.com) until SES DEVELOPER + from-address.
   verification_message_template {
-    default_email_option = "CONFIRM_WITH_LINK"
+    default_email_option  = "CONFIRM_WITH_LINK"
+    email_subject_by_link = "Confirm your RDI account"
+    email_message_by_link = "Welcome to RDI. Confirm your email to finish setup: {##Verify Email##}"
   }
 
   password_policy {
@@ -58,6 +60,7 @@ resource "aws_cognito_user_pool" "main" {
   lambda_config {
     pre_authentication  = aws_lambda_function.cognito_auth_triggers.arn
     post_authentication = aws_lambda_function.cognito_auth_triggers.arn
+    custom_message      = aws_lambda_function.cognito_auth_triggers.arn
   }
 
   tags = merge(var.tags, {
