@@ -43,7 +43,7 @@ resource "aws_iam_role_policy" "cognito_auth_triggers_dynamo" {
 
 resource "aws_lambda_function" "cognito_auth_triggers" {
   function_name = "${var.name_prefix}-cognito-auth-triggers"
-  description   = "Cognito PostAuthentication: stamp auth_session_epoch for single-login"
+  description   = "Cognito Pre/PostAuth: deny login while session active; stamp epoch"
   role          = aws_iam_role.cognito_auth_triggers.arn
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.12"
@@ -55,7 +55,8 @@ resource "aws_lambda_function" "cognito_auth_triggers" {
 
   environment {
     variables = {
-      USER_PROFILES_TABLE = var.user_profiles_table_name
+      USER_PROFILES_TABLE       = var.user_profiles_table_name
+      AUTH_SESSION_IDLE_SECONDS = "900"
     }
   }
 
@@ -66,6 +67,15 @@ resource "aws_lambda_function" "cognito_auth_triggers" {
 
 resource "aws_lambda_permission" "cognito_post_auth" {
   statement_id   = "AllowCognitoPostAuth"
+  action         = "lambda:InvokeFunction"
+  function_name  = aws_lambda_function.cognito_auth_triggers.function_name
+  principal      = "cognito-idp.amazonaws.com"
+  source_arn     = aws_cognito_user_pool.main.arn
+  source_account = data.aws_caller_identity.current.account_id
+}
+
+resource "aws_lambda_permission" "cognito_pre_auth" {
+  statement_id   = "AllowCognitoPreAuth"
   action         = "lambda:InvokeFunction"
   function_name  = aws_lambda_function.cognito_auth_triggers.function_name
   principal      = "cognito-idp.amazonaws.com"

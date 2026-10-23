@@ -7,6 +7,13 @@ resource "aws_cognito_user_pool" "main" {
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
 
+  # Signup verification: Cognito emails a clickable link (CONFIRM_WITH_LINK).
+  # Default Cognito sender (no-reply@verificationemail.com) until SES is configured.
+  # Custom HTML subject/body requires email_configuration { email_sending_account = "DEVELOPER" } + SES.
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_LINK"
+  }
+
   password_policy {
     minimum_length    = 8
     require_lowercase = true
@@ -40,7 +47,16 @@ resource "aws_cognito_user_pool" "main" {
     allow_admin_create_user_only = false
   }
 
+  # Required TOTP MFA for Cognito (email/password) users — Microsoft Authenticator,
+  # Google Authenticator, Authy, etc. Federated Google users use Google's MFA instead.
+  mfa_configuration = "ON"
+
+  software_token_mfa_configuration {
+    enabled = true
+  }
+
   lambda_config {
+    pre_authentication  = aws_lambda_function.cognito_auth_triggers.arn
     post_authentication = aws_lambda_function.cognito_auth_triggers.arn
   }
 
