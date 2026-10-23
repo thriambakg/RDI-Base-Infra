@@ -45,3 +45,13 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "user_profiles_table_name" {
+  type        = string
+  description = "DynamoDB user-profiles table for auth_session_epoch stamps"
+}
+
+variable "user_profiles_table_arn" {
+  type        = string
+  description = "ARN of the user-profiles table"
+}

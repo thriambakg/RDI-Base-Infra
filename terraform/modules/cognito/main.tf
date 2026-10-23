@@ -40,6 +40,10 @@ resource "aws_cognito_user_pool" "main" {
     allow_admin_create_user_only = false
   }
 
+  lambda_config {
+    post_authentication = aws_lambda_function.cognito_auth_triggers.arn
+  }
+
   tags = merge(var.tags, {
     Project     = "rdi"
     Environment = var.environment

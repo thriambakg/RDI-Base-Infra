@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
   }
   backend "s3" {
     # Values from backend-configs/{environment}.tfbackend
@@ -116,7 +120,12 @@ module "cognito" {
   google_client_id     = var.google_client_id
   google_client_secret = var.google_client_secret
 
+  user_profiles_table_name = module.user_profiles.table_name
+  user_profiles_table_arn  = module.user_profiles.table_arn
+
   tags = {}
+
+  depends_on = [module.user_profiles]
 }
 
 # -----------------------------------------------------------------------------
