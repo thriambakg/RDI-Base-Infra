@@ -42,7 +42,7 @@ def _stamp_session(user_id: str) -> None:
     if not USER_PROFILES_TABLE or not user_id:
         print("[cognito-auth] post-auth skip: missing table or sub")
         return
-    # Floor to whole seconds; APIs allow a small skew so the issuing login is accepted.
+    # Wall clock; JWT auth_time is within ~1s. APIs allow 2s skew.
     epoch = int(time.time())
     try:
         dynamodb.update_item(
@@ -50,7 +50,10 @@ def _stamp_session(user_id: str) -> None:
             Key={"user_id": {"S": user_id}},
             UpdateExpression="SET auth_session_epoch = :e",
             ExpressionAttributeValues={":e": {"N": str(epoch)}},
+            # Never move the epoch backwards if an API claim already advanced it.
+            ConditionExpression="attribute_not_exists(auth_session_epoch) OR auth_session_epoch <= :e",
         )
         print(f"[cognito-auth] auth_session_epoch={epoch} user_id={user_id!r}")
     except Exception as e:
-        print(f"[cognito-auth] post-auth dynamo error user_id={user_id!r}: {e}")
+        # ConditionalCheckFailed = a newer session already claimed; fine.
+        print(f"[cognito-auth] post-auth dynamo note user_id={user_id!r}: {e}")
