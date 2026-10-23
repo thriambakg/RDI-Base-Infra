@@ -6,6 +6,7 @@ Policy (drone / live-control threat model):
     (PreAuthentication). A credential thief cannot kick the pilot mid-flight.
   - After idle timeout, or explicit logout that clears the lock, sign-in is allowed.
   - PostAuthentication stamps auth_session_epoch for API token checks.
+  - CustomMessage loads branded HTML from templates/ packaged with this Lambda.
 
 We never GlobalSignOut in PreAuthentication (wrong-password DoS).
 """
@@ -14,6 +15,8 @@ from __future__ import annotations
 
 import os
 import time
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -22,6 +25,8 @@ from botocore.exceptions import ClientError
 USER_PROFILES_TABLE = os.environ.get("USER_PROFILES_TABLE", "")
 # No successful API activity within this window → treat session as idle; allow login.
 AUTH_SESSION_IDLE_SECONDS = int(os.environ.get("AUTH_SESSION_IDLE_SECONDS", "900"))
+
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
 dynamodb = boto3.client("dynamodb")
 
@@ -72,8 +77,13 @@ def _apply_custom_message(event: dict) -> None:
         print("[cognito-auth] custom-message forgot-password email")
 
 
+@lru_cache(maxsize=8)
+def _load_template(name: str) -> str:
+    path = _TEMPLATES_DIR / name
+    return path.read_text(encoding="utf-8")
+
+
 def _verification_email_html(*, link: str, code: str) -> str:
-    # Table layout + inline CSS for email clients.
     # Placeholders (e.g. {##Verify Email##}, {####}) are substituted by Cognito.
     cta = link or code
     code_fallback = ""
@@ -84,76 +94,15 @@ def _verification_email_html(*, link: str, code: str) -> str:
             Prefer a code? Enter <strong style="color:#e2e8f0;letter-spacing:0.12em;">{code}</strong> in the app.
           </p>
         </td></tr>"""
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;padding:0;background:#0b1220;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1220;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
-        <tr><td style="height:4px;background:#3b82f6;font-size:0;line-height:0;">&nbsp;</td></tr>
-        <tr><td style="padding:36px 32px 12px;text-align:center;">
-          <div style="font-size:28px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;">RDI</div>
-          <div style="margin-top:6px;font-size:13px;color:#64748b;letter-spacing:0.04em;">Remote Drone Infrastructure</div>
-        </td></tr>
-        <tr><td style="padding:8px 32px 0;text-align:center;">
-          <h1 style="margin:0;font-size:22px;line-height:1.35;font-weight:700;color:#f8fafc;">Confirm your email</h1>
-          <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#94a3b8;">
-            Welcome to RDI. Verify your email to finish setting up your account and open the console.
-          </p>
-        </td></tr>
-        <tr><td style="padding:28px 32px 12px;text-align:center;">
-          <div style="display:inline-block;background:#3b82f6;color:#ffffff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:6px;">
-            {cta}
-          </div>
-        </td></tr>
-        {code_fallback}
-        <tr><td style="padding:16px 32px 28px;text-align:center;">
-          <p style="margin:0;font-size:13px;line-height:1.55;color:#64748b;">
-            If you did not create an RDI account, you can ignore this message.
-          </p>
-        </td></tr>
-        <tr><td style="padding:16px 32px 24px;border-top:1px solid #1e293b;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#475569;">&copy; RDI</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
+    return (
+        _load_template("verification_email.html")
+        .replace("{{CTA}}", cta)
+        .replace("{{CODE_FALLBACK}}", code_fallback)
+    )
 
 
 def _forgot_password_email_html(verify_token: str) -> str:
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;padding:0;background:#0b1220;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1220;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
-        <tr><td style="height:4px;background:#3b82f6;font-size:0;line-height:0;">&nbsp;</td></tr>
-        <tr><td style="padding:36px 32px 12px;text-align:center;">
-          <div style="font-size:28px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;">RDI</div>
-        </td></tr>
-        <tr><td style="padding:8px 32px 0;text-align:center;">
-          <h1 style="margin:0;font-size:22px;font-weight:700;color:#f8fafc;">Reset your password</h1>
-          <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#94a3b8;">
-            Use the code below to choose a new password for your RDI account.
-          </p>
-        </td></tr>
-        <tr><td style="padding:28px 32px;text-align:center;">
-          <div style="display:inline-block;background:#1e293b;border:1px solid #334155;color:#f8fafc;font-size:22px;font-weight:700;letter-spacing:0.2em;padding:14px 28px;border-radius:6px;">
-            {verify_token}
-          </div>
-        </td></tr>
-        <tr><td style="padding:0 32px 28px;text-align:center;">
-          <p style="margin:0;font-size:13px;color:#64748b;">If you did not request a reset, you can ignore this email.</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
+    return _load_template("forgot_password_email.html").replace("{{CODE}}", verify_token)
 
 
 def _reject_if_session_active(user_id: str, user_name: str) -> None:
