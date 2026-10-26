@@ -116,9 +116,9 @@ module "cognito" {
     ["https://${module.frontend_cloudfront.distribution_domain_name}"]
   ))
 
-  enable_google        = var.enable_google_auth
-  google_client_id     = var.google_client_id
-  google_client_secret = var.google_client_secret
+  enable_google        = local.enable_google_effective
+  google_client_id     = local.google_client_id_effective
+  google_client_secret = local.google_client_secret_effective
 
   user_profiles_table_name = module.user_profiles.table_name
   user_profiles_table_arn  = module.user_profiles.table_arn

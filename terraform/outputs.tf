@@ -103,6 +103,7 @@ output "build_environment_variables" {
     NEXT_PUBLIC_REDIRECT_SIGN_IN            = "https://${module.frontend_cloudfront.distribution_domain_name}/auth/callback"
     NEXT_PUBLIC_REDIRECT_SIGN_OUT           = "https://${module.frontend_cloudfront.distribution_domain_name}"
     NEXT_PUBLIC_API_GATEWAY_URL             = ""
-    ENABLE_GOOGLE_AUTH                      = tostring(var.enable_google_auth)
+    ENABLE_GOOGLE_AUTH                      = tostring(local.enable_google_effective)
+    OAUTH_SECRET_NAME                       = aws_secretsmanager_secret.oauth.name
   })
 }

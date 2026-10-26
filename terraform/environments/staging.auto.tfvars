@@ -18,4 +18,6 @@ cognito_logout_urls = [
   "https://rdistaging.com",
   "https://www.rdistaging.com"
 ]
-enable_google_auth = false # Set true and provide google_client_id / google_client_secret for Google login
+# Google IdP: enable when Secrets Manager secret `${name_prefix}/oauth` has real
+# google_client_id / google_client_secret (or set TF_VAR_google_client_*).
+enable_google_auth = true

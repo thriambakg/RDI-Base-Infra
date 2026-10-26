@@ -96,6 +96,9 @@ resource "aws_cognito_user_pool_client" "web" {
     var.enable_google ? ["Google"] : []
   )
 
+  # App client must list Google only after the IdP exists.
+  depends_on = [aws_cognito_identity_provider.google]
+
   read_attributes  = ["email", "email_verified", "name"]
   write_attributes = ["email", "name"]
 
